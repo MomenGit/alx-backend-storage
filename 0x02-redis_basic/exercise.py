@@ -11,14 +11,17 @@ def replay(method: Callable) -> None:
     Args:
         method (Callable): The wrapped method
     """
-    redis = method.__self__._redis
+    if method is None or not hasattr(method, '__self__'):
+        return
+
+    redis_store = method.__self__._redis
 
     calls_count = method.__self__.get(
         method.__qualname__, lambda d: d.decode('utf-8'))
 
-    inputs = redis.lrange(
+    inputs = redis_store.lrange(
         f"{method.__qualname__}:inputs", 0, -1)
-    outputs = redis.lrange(
+    outputs = redis_store.lrange(
         f"{method.__qualname__}:outputs", 0, -1)
     io = zip(inputs, outputs)
 
