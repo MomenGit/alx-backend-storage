@@ -12,18 +12,23 @@ def replay(method: Callable) -> None:
         method (Callable): The wrapped method
     """
     redis = method.__self__._redis
-    calls_count = method.__self__.get(method.__qualname__, int)
+
+    calls_count = method.__self__.get(
+        method.__qualname__, lambda d: d.decode('utf-8'))
+
     inputs = redis.lrange(
-        "{}:inputs".format(method.__qualname__), 0, -1)
+        f"{method.__qualname__}:inputs", 0, -1)
     outputs = redis.lrange(
-        "{}:outputs".format(method.__qualname__), 0, -1)
+        f"{method.__qualname__}:outputs", 0, -1)
+    io = zip(inputs, outputs)
+
     print(f"{method.__qualname__} was called {calls_count} times:")
-    for i in range(calls_count):
+    for ip, op in list(io):
         print(
             "{}(*{}) -> {}"
             .format(method.__qualname__,
-                    inputs[i].decode('utf-8'),
-                    outputs[i].decode('utf-8')))
+                    ip.decode('utf-8'),
+                    op.decode('utf-8')))
 
 
 def call_history(method: Callable) -> Callable:
