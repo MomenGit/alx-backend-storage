@@ -6,7 +6,7 @@ from typing import Union, Callable, Optional
 from functools import wraps
 
 
-def replay(method) -> None:
+def replay(method: Callable) -> None:
     """Display the history of calls of a particular function
     Args:
         method (Callable): The wrapped method
