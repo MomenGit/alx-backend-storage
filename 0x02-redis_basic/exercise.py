@@ -6,19 +6,41 @@ from typing import Union, Callable, Optional
 from functools import wraps
 
 
-def count_calls(fn):
+def call_history(method: Callable) -> Callable:
+    """
+    Store the history of inputs and outputs for a particular function
+    Every time the original function will be called,
+    we will add its input parameters to one list in redis,
+    and store its output into another list.
+    Args:
+        fn (Callable): The wrapped method
+    """
+    ip_key = method.__qualname__+":inputs"
+    op_key = method.__qualname__+":outputs"
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        self._redis.rpush(ip_key, str(args))
+        result = method(self, *args, **kwargs)
+        self._redis.rpush(op_key, str(result))
+        return result
+
+    return wrapper
+
+
+def count_calls(method: Callable) -> Callable:
     """
     Decorator that takes a single method Callable arg and returns a Callable
     Create and return function that increments the count for that key
     every time the method is called and returns the value
     returned by the original method.
-    Arg:
+    Args:
         fn (Callable): The wrapped method
     """
-    @wraps(fn)
+    @wraps(method)
     def wrapper(self, *args, **kwds):
-        self._redis.incr(fn.__qualname__)
-        return fn(self, *args, *kwds)
+        self._redis.incr(method.__qualname__)
+        return method(self, *args, *kwds)
     return wrapper
 
 
@@ -29,6 +51,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @call_history
     @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         key = uuid.uuid4().__str__()
