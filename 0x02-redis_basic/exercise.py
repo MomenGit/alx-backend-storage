@@ -6,6 +6,26 @@ from typing import Union, Callable, Optional
 from functools import wraps
 
 
+def replay(method) -> None:
+    """Display the history of calls of a particular function
+    Args:
+        method (Callable): The wrapped method
+    """
+    redis = method.__self__._redis
+    calls_count = method.__self__.get(method.__qualname__, int)
+    inputs = redis.lrange(
+        "{}:inputs".format(method.__qualname__), 0, -1)
+    outputs = redis.lrange(
+        "{}:outputs".format(method.__qualname__), 0, -1)
+    print(f"{method.__qualname__} was called {calls_count} times:")
+    for i in range(calls_count):
+        print(
+            "{}(*{}) -> {}"
+            .format(method.__qualname__,
+                    inputs[i].decode('utf-8'),
+                    outputs[i].decode('utf-8')))
+
+
 def call_history(method: Callable) -> Callable:
     """
     Store the history of inputs and outputs for a particular function
@@ -13,7 +33,7 @@ def call_history(method: Callable) -> Callable:
     we will add its input parameters to one list in redis,
     and store its output into another list.
     Args:
-        fn (Callable): The wrapped method
+        method (Callable): The wrapped method
     """
     ip_key = method.__qualname__+":inputs"
     op_key = method.__qualname__+":outputs"
@@ -35,7 +55,7 @@ def count_calls(method: Callable) -> Callable:
     every time the method is called and returns the value
     returned by the original method.
     Args:
-        fn (Callable): The wrapped method
+        method (Callable): The wrapped method
     """
     @wraps(method)
     def wrapper(self, *args, **kwds):
