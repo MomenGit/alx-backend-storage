@@ -19,7 +19,7 @@ if __name__ == "__main__":
     recent_pipeline = [
         {"$group": {
             "_id": "$ip",
-            "count": {"$count": {}},
+            "count": {"$sum": 1},
         }},
         {"$sort": {"count": -1}},
         {"$limit": 10}
